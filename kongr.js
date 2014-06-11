@@ -21,6 +21,7 @@
     }
 
     var KEY_DATA = 'jQuery.fn.kongr.data', propVisitor = $.fn.prop? 'prop': 'attr';
+    var KEY_ATTR = 'placeholder'
     var $win = $(window);
     var settingsHolder = {};
 
@@ -52,7 +53,7 @@
     // initialize inputs
     function init(i, dom) {
         var el = $(dom);
-        var tip = el.attr('title');
+        var tip = el.attr(KEY_ATTR);
 
         var settings = {};
         $.extend(settings, settingsHolder);
@@ -66,7 +67,7 @@
             !el.is(':visible')) return;
 
         // get rid of title and disable autofill
-        el.attr('title', '').attr('autocomplete','off');
+        el.attr(KEY_ATTR, '').attr('autocomplete','off');
 
         // create a hover element, and cover the input
         var hover = $('<div />')
@@ -147,7 +148,7 @@
         if (i < 0){
             return;
         }
-        data.value.input.attr('title', data.value.tip).blur();
+        data.value.input.attr(KEY_ATTR, data.value.tip).blur();
         data.value.hover.remove();
         elQueue.splice(i, 1);
     }
