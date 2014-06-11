@@ -21,10 +21,12 @@
     }
 
     var KEY_DATA = 'jQuery.fn.kongr.data', propVisitor = $.fn.prop? 'prop': 'attr';
-    var KEY_ATTR = 'placeholder'
+    var KEY_ATTR = 'placeholder';
+    var KEY_CLASS_INDEX = '-kongr-index-';
     var $win = $(window);
     var settingsHolder = {};
-
+    var instanceCount = 0;
+    var hasPlaceholder = 'placeholder' in document.createElement('input');
     var defaultOptions = {
         className: '-kongr-placeholder-',
         chainUpdate: false,
@@ -35,47 +37,88 @@
     // storing all 'data' object, data object contains all element-hover pairs and theirs settings
     var elQueue = [];
 
-    // sigh, another ie bug here, somehow jquery.fn.offset gets wrong location when it was fired in window.resize, let delay it a little bit for ie < 8
-    if ($.browser.msie && $.browser.version < 8) {
-        $win.resize(function(){
-            var args = arguments;
-            var self = this;
-            setTimeout(function(){
-                handleResize.apply(self, args);
-            }, 100);
-        });
+    // Get the first stylesheet in the document, or, if there are none, create/inject
+    // one and return it.
+    function getStyleSheet() {
+        var sheet = document.styleSheets && document.styleSheets[0];
+        if (! sheet) {
+            var head = document.head || document.getElementsByTagName('head')[0];
+            var style = document.createElement('style');
+            style.appendChild(document.createTextNode(''));
+            document.head.appendChild(style);
+            sheet = style.sheet;
+        }
+        return sheet;
     }
-    else {
-        $win.resize(handleResize);
+
+    function adjustLuminance(hex, lum) {
+
+        // validate hex string
+        hex = rgb2hex(hex);
+        hex = String(hex).replace(/[^0-9a-f]/gi, '');
+        if (hex.length < 6) {
+            hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+        }
+        lum = lum || 0;
+
+        // convert to decimal and change luminosity
+        var rgb = "#", c, i;
+        for (i = 0; i < 3; i++) {
+            c = parseInt(hex.substr(i*2,2), 16);
+            c = Math.round(Math.min(Math.max(0, c + (c * lum)), 255)).toString(16);
+            rgb += ("00"+c).substr(c.length);
+        }
+
+        return rgb;
+    }
+
+    function rgb2hex(rgb) {
+        if (/^#[0-9A-F]{6}$/i.test(rgb)) return rgb;
+
+        rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+        function hex(x) {
+            return ("0" + parseInt(x).toString(16)).slice(-2);
+        }
+        return "#" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
     }
         
-
     // initialize inputs
     function init(i, dom) {
+
+        if ( hasPlaceholder ) {
+            return;
+        }
+
+        instanceCount++;
         var el = $(dom);
         var tip = el.attr(KEY_ATTR);
-
         var settings = {};
+        var tagName = el[propVisitor]('tagName').toLowerCase();
+
         $.extend(settings, settingsHolder);
 
-        var tagName = el[propVisitor]('tagName').toLowerCase();
         // if it is not a input or input without title attr, bypass it.
-        if ((tagName != 'input' &&
-            tagName != 'textarea') ||
-            tip == null ||
-            tip == '' ||
-            !el.is(':visible')) return;
+        if  (
+                (
+                    tagName != 'input' &&
+                    tagName != 'textarea'
+                ) ||
+                tip == null ||
+                tip == '' ||
+                !el.is(':visible')
+            ) {
+            return;
+        }
 
         // get rid of title and disable autofill
         el.attr(KEY_ATTR, '').attr('autocomplete','off');
 
         // create a hover element, and cover the input
-        var hover = $('<div />')
+        var hover = $('<div></div>')
             .html(tip)
             .addClass(settings.className)
+            .addClass(KEY_CLASS_INDEX + instanceCount )
             .appendTo(el.parent());
-
-        cloneCss(hover, el);
 
         // if there are value in it, hide hover
         if (el.val() != ""){
@@ -87,7 +130,8 @@
             input: el,
             hover: hover,
             tip: tip,
-            virgin: true
+            virgin: true,
+            index: instanceCount
         };
 
         elQueue.push(data);
@@ -95,6 +139,7 @@
         el.data(KEY_DATA, data);
         hover.data(KEY_DATA, data);
 
+        cloneCss(hover, el);
         hookEvents(el, hover);
     }
 
@@ -107,24 +152,32 @@
         var z = el.css('zIndex');
         z = z == 'auto' ? 0 : z;
 
+        var data = el.data(KEY_DATA);
+
         hover.css({
-                position: 'absolute',
-                zIndex: z + 1, // a little bit higher than current element.
-                overflow: 'hidden',
-                width: size.width,
-                height: size.height,
-                paddingTop: el.css('paddingTop'),
-                paddingLeft: el.css('paddingLeft'),
-                paddingRight: el.css('paddingRight'),
-                paddingBottom: el.css('paddingBottom'),
-                marginTop: el.css('marginTop'),
-                marginLeft: el.css('marginLeft'),
-                marginRight: el.css('marginRight'),
-                marginBottom: el.css('marginBottom'),
-                lineHeight: el.css('lineHeight'),
-                cursor: 'text'
-            })
-            .beam().to(el).at('center middle');
+            position: 'absolute',
+            // a little bit higher than current element.
+            zIndex: z + 1, 
+            overflow: 'hidden',
+            width: size.width,
+            height: size.height,
+            paddingTop: el.css('paddingTop'),
+            paddingLeft: el.css('paddingLeft'),
+            paddingRight: el.css('paddingRight'),
+            paddingBottom: el.css('paddingBottom'),
+            marginTop: el.css('marginTop'),
+            marginLeft: el.css('marginLeft'),
+            marginRight: el.css('marginRight'),
+            marginBottom: el.css('marginBottom'),
+            lineHeight: el.css('lineHeight'),
+            cursor: 'text',
+            // just in case bastards such as bootstrap set our box-sizing
+            boxSizing: 'content-box'
+        })
+        .beam().to(el).at('center middle');
+
+        getStyleSheet().addRule( '.' + KEY_CLASS_INDEX  + data.index, 'color: ' +  adjustLuminance(el.css('color'), .4) );
+
     }
 
     function findDataTarget(dom, data){
@@ -291,6 +344,7 @@
     };
 
     $.fn.extend(exports);
+    $win.resize(handleResize);
 
     return $;
 });
