@@ -74,7 +74,7 @@
                 ) ||
                 tip == null ||
                 tip == '' ||
-                !el.is(':visible')
+                el.is('[type=hidden]')
             ) {
             return;
         }
@@ -113,39 +113,60 @@
     }
 
     function cloneCss(hover, el){
-        var size = {
-            width: el.width(),
-            height: el.height()
-        };
-
-        var z = el.css('zIndex');
-        z = z == 'auto' ? 0 : z;
-
         var data = el.data(KEY_DATA);
 
-        hover.css({
-            position: 'absolute',
-            // a little bit higher than current element.
-            zIndex: z + 1, 
-            overflow: 'hidden',
-            width: size.width,
-            height: size.height,
-            paddingTop: el.css('paddingTop'),
-            paddingLeft: el.css('paddingLeft'),
-            paddingRight: el.css('paddingRight'),
-            paddingBottom: el.css('paddingBottom'),
-            marginTop: el.css('marginTop'),
-            marginLeft: el.css('marginLeft'),
-            marginRight: el.css('marginRight'),
-            marginBottom: el.css('marginBottom'),
-            lineHeight: el.css('lineHeight'),
-            cursor: 'text',
-            // just in case bastards such as bootstrap set our box-sizing
-            boxSizing: 'content-box'
-        })
-        .beam().to(el).at('center middle');
+        if ( data.deferRender ) {
+            return data.deferRender;
+        }
 
-        getStyleSheet().addRule( '.' + KEY_CLASS_INDEX  + data.index, 'color: #999' );
+        data.deferRender = $.Deferred();
+
+        (function loop(){
+
+            if ( !el.is(':visible') ) {
+                console.log('ooops');
+                setTimeout( loop, 200 );
+                return;
+            }
+
+            var size = {
+                width: el.width(),
+                height: el.height()
+            };
+
+            var z = el.css('zIndex');
+            z = z == 'auto' ? 0 : z;
+
+            hover.css({
+                position: 'absolute',
+                // a little bit higher than current element.
+                zIndex: z + 1, 
+                overflow: 'hidden',
+                width: size.width,
+                height: size.height,
+                paddingTop: el.css('paddingTop'),
+                paddingLeft: el.css('paddingLeft'),
+                paddingRight: el.css('paddingRight'),
+                paddingBottom: el.css('paddingBottom'),
+                marginTop: el.css('marginTop'),
+                marginLeft: el.css('marginLeft'),
+                marginRight: el.css('marginRight'),
+                marginBottom: el.css('marginBottom'),
+                lineHeight: el.css('lineHeight'),
+                cursor: 'text',
+                // just in case bastards such as bootstrap set our box-sizing
+                boxSizing: 'content-box'
+            })
+            .beam().to(el).at('center middle');
+
+            getStyleSheet().addRule( '.' + KEY_CLASS_INDEX  + data.index, 'color: #999' );
+
+            data.deferRender.resolve();
+            delete data.deferRender;
+
+        })();
+
+        return data.deferRender;
 
     }
 
