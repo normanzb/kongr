@@ -124,7 +124,6 @@
         (function loop(){
 
             if ( !el.is(':visible') ) {
-                console.log('ooops');
                 setTimeout( loop, 200 );
                 return;
             }
