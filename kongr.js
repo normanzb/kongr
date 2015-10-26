@@ -3,7 +3,7 @@
 */
 
 ;(function(Ctor){
-    if ( window.define && window.define.amd == true ){
+    if ( window.define && window.define.amd != null ){
         define(function(){
             return Ctor;
         });
